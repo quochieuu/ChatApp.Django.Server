@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
 from django.utils import timezone
+from message_control.models import GenericFileUpload
 
 
 class CustomUserManager(BaseUserManager):
@@ -43,6 +44,25 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return self.username
+
+    class Meta:
+        ordering = ("created_at",)
+
+
+class UserProfile(models.Model):
+    user = models.OneToOneField(
+        CustomUser, related_name="user_profile", on_delete=models.CASCADE)
+    first_name = models.CharField(max_length=100)
+    last_name = models.CharField(max_length=100)
+    caption = models.CharField(max_length=250)
+    about = models.TextField()
+    profile_picture = models.ForeignKey(
+        GenericFileUpload, related_name="user_image", on_delete=models.SET_NULL, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.user.username
 
     class Meta:
         ordering = ("created_at",)
