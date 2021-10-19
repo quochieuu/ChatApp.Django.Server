@@ -1,17 +1,20 @@
 import jwt
-from .models import Jwt, CustomUser
+from .models import Jwt, CustomUser, UserProfile
 from datetime import datetime, timedelta
 from django.conf import settings
 import random
 import string
 from rest_framework.views import APIView
 from .serializers import (
-    LoginSerializer, RegisterSerializer, RefreshSerializer
+    LoginSerializer, RegisterSerializer, RefreshSerializer, UserProfileSerializer
 )
 from django.contrib.auth import authenticate
 from rest_framework.response import Response
 from .authentication import Authentication
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.viewsets import ModelViewSet
+import re
+from django.db.models import Q, Count, Subquery, OuterRef
 
 
 def get_random(length):
@@ -110,4 +113,10 @@ class RefreshView(APIView):
         active_jwt.save()
 
         return Response({"access": access, "refresh": refresh})
+
+
+class UserProfileView(ModelViewSet):
+    queryset = UserProfile.objects.all()
+    serializer_class = UserProfileSerializer
+    permission_classes = (IsAuthenticated, )
 
