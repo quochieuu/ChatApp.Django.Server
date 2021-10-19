@@ -120,3 +120,51 @@ class UserProfileView(ModelViewSet):
     serializer_class = UserProfileSerializer
     permission_classes = (IsAuthenticated, )
 
+    def get_queryset(self):
+        if self.request.method.lower() != "get":
+            return self.queryset
+
+        data = self.request.query_params.dict()
+        data.pop("page", None)
+        keyword = data.pop("keyword", None)
+
+        if keyword:
+            search_fields = (
+                "user__username", "first_name", "last_name", "user__email"
+            )
+            query = self.get_query(keyword, search_fields)
+            try:
+                return self.queryset.filter(query).filter(**data).exclude(
+                    Q(user_id=self.request.user.id) |
+                    Q(user__is_superuser=True)
+                ).annotate(
+                    fav_count=Count(self.user_fav_query(self.request.user))
+                ).order_by("-fav_count")
+            except Exception as e:
+                raise Exception(e)
+
+        result = self.queryset.filter(**data).exclude(
+            Q(user_id=self.request.user.id) |
+            Q(user__is_superuser=True)
+        ).annotate(
+            fav_count=Count(self.user_fav_query(self.request.user))
+        ).order_by("-fav_count")
+        return result
+
+    @staticmethod
+    def get_query(query_string, search_fields):
+        query = None  # Query to search for every search term
+        terms = UserProfileView.normalize_query(query_string)
+        for term in terms:
+            or_query = None  # Query to search for a given term in each field
+            for field_name in search_fields:
+                q = Q(**{"%s__icontains" % field_name: term})
+                if or_query is None:
+                    or_query = q
+                else:
+                    or_query = or_query | q
+            if query is None:
+                query = or_query
+            else:
+                query = query & or_query
+        return query
